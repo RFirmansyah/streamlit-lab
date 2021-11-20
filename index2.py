@@ -1,3 +1,6 @@
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'streamlit'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'streamlit_echarts'])
+
 import streamlit as st
 import pandas as pd
 from pandas import DataFrame
