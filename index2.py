@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
-from st_aggrid import AgGrid
 from streamlit_echarts import st_echarts
 
 import datastream as ds
@@ -26,10 +25,11 @@ with st.container():
     
     with row1_col2:
         order_status_df = DataFrame(df['order_stat'].value_counts())
-        order_status_df['name'] = order_status_df.index
+        order_status_df['name'] = order_status_df.index                          
+        order_status_df.sort_values(by=['name'], inplace=True)
+        
         exclude = ['COMPLETE','CLOSED']
         order_status_df = order_status_df[~order_status_df['name'].isin(exclude)]
-        order_status_df.sort_values(by=['name'], inplace=True)
         
         options = vo.set_bar_option(list(order_status_df['name']),list(order_status_df['order_stat']))
         
