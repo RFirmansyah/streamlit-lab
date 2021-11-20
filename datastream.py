@@ -1,3 +1,8 @@
+import sys
+import subprocess
+
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'gsheetsdb'])
+
 from gsheetsdb import connect
 
 source = "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"
