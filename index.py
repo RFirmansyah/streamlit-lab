@@ -1,298 +1,117 @@
+import sys
+import subprocess
+
+#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'streamlit'])
+#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'streamlit_echarts'])
+
 import streamlit as st
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
-from st_aggrid import AgGrid
-from gsheetsdb import connect
 from streamlit_echarts import st_echarts
+
+import datastream as ds
+import vizopt as vo
+
+if 'month' not in st.session_state:
+    st.session_state['month'] = 'Jan'
+    
+df = DataFrame(ds.data_stream(st.session_state['month']))
 
 st.set_page_config(layout="wide")
 
 with st.container():
-    row1_col1, row1_col2, row1_col3 = st.columns([1,2,1])
+    row0_col1, row0_col2, row0_col3, row0_col4, row0_col5 = st.columns(5)
     
-    with row1_col1:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                COUNT("Delivery Status") as value,
-                "Delivery Status" AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA'            
-            GROUP BY
-                "Delivery Status"
-        """, headers=1)
+    with row0_col1:
+        total_item_qty = df['order_item_qty'].sum()
         
-        df = DataFrame(result)
+        st.header(int(total_item_qty))
+        st.text('Total sales units')
         
-        options = {
-            "color": ["#7dc370", "#ffbeb2", "#fa8f79", "#b3e0a6"],
-            "tooltip": {"trigger": "item"},
-            #"legend": {"top": "5%", "left": "center"},
-            "series": [
-                {
-                    "name": "Delivery Status",
-                    "type": "pie",
-                    "radius": ["40%", "70%"],
-                    "avoidLabelOverlap": False,
-                    "itemStyle": {
-                        "borderRadius": 5,
-                        "borderColor": "#fff",
-                        "borderWidth": 2,
-                    },
-                    "label": {"show": False, "position": "center"},
-                    "emphasis": {
-                        "label": {"show": True, "fontSize": "40", "fontWeight": "bold"}
-                    },
-                    "labelLine": {"show": False},
-                    "data": df.to_dict('records'),
-                }
-            ],
-        }
+    with row0_col2:
+        total_inventory_value = round((df['product_price'].sum()*total_item_qty)/1000000,2)
         
-        st_echarts(
-            options=options, height="200px"
-        )
+        st.header('$'+str(total_inventory_value)+'M')
+        st.text('Total item ordered value')
         
-    with row1_col2:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                COUNT("Order Status") as value,
-                "Order Status" AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA' AND      
-                "Order Status" <> 'COMPLETE' AND
-                "Order Status" <> 'CLOSED'    
-            GROUP BY
-                "Order Status"
-        """, headers=1)
+    with row0_col3:
+        total_sales_value = round((df['sales'].sum())/1000,2)
         
-        df = DataFrame(result)
+        st.header('$'+str(total_sales_value)+'K')
+        st.text('Total sales value')
         
-        options = {
-          "title": {
-            "text": "Status Order"
-          },
-          "color": ["#d3293d", "#da323f", "#ae123a", "#fb9984", "#f36754", "#fa8f79", "#f05c4d"],
-          "tooltip": {
-            "trigger": 'axis',
-            "axisPointer": {
-              "type": "shadow"
-            }
-          },
-          "legend": {},
-          "grid": {
-            "left": "3%",
-            "right": "4%",
-            "bottom": "3%",
-            "containLabel": True
-          },
-          "xAxis": {
-            "type": "value",
-            "boundaryGap": ["0", "0.01"]
-          },
-          "yAxis": {
-            "type": "category",
-            "data": list(df['name'])
-          },
-          "series": [
-            {
-              #"name": "2011",
-              "type": "bar",
-              "data": list(df['value'])
-            }
-          ]
-        }
+    with row0_col4:
+        total_profit_value = round((df['profit_per_order'].sum())/1000,2)
         
-        st_echarts(
-            options=options, height="200px"
-        )                                      
-    
-    with row1_col3:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                COUNT(Late_delivery_risk) as value,
-                Late_delivery_risk AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA'            
-            GROUP BY
-                Late_delivery_risk
-        """, headers=1)
+        st.header('$'+str(total_profit_value)+'K')
+        st.text('Total profit value') 
         
-        df = DataFrame(result)
+    with row0_col5:
+        month_option = st.selectbox('Filter month',('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'), key='fmonth', on_change=ds.update_month)
         
-        nameList = list()
-        
-        for i in df['name']:
-            if i == 0:
-              nameList.append('Not Late')
-            else:
-              nameList.append('Late')
-              
-        df['name'] = nameList
-        
-        options = {
-            "color": ["#7dc370", "#ffbeb2", "#fa8f79", "#b3e0a6"],
-            "tooltip": {"trigger": "item"},
-            #"legend": {"top": "5%", "left": "center"},
-            "series": [
-                {
-                    "name": "Delivery Status",
-                    "type": "pie",
-                    "radius": ["40%", "70%"],
-                    "avoidLabelOverlap": False,
-                    "itemStyle": {
-                        "borderRadius": 5,
-                        "borderColor": "#fff",
-                        "borderWidth": 2,
-                    },
-                    "label": {"show": False, "position": "center"},
-                    "emphasis": {
-                        "label": {"show": True, "fontSize": "40", "fontWeight": "bold"}
-                    },
-                    "labelLine": {"show": False},
-                    "data": df.to_dict('records'),
-                }
-            ],
-        }
-        
-        st_echarts(
-            options=options, height="200px"
-        )                  
+        #st.session_state['month'] = month_option
+        #df = DataFrame(ds.data_stream(st.session_state['month']))
 
 with st.container():
-    row2_col1, row2_col2, row2_col3 = st.columns(3)
+    row1_col1, row1_col2, row1_col3 = st.columns([1,2,1])
+
+    with row1_col1:
+        delivery_status_df = DataFrame(df['delivery_stat'].value_counts())
+        delivery_status_df['name'] = delivery_status_df.index
+        delivery_status_df['name'] = ds.replace(delivery_status_df['name'],['Late','Advance','On Time','Canceled'])
+        delivery_status_df.rename(columns={'delivery_stat':'value'}, inplace=True)
+        
+        options = vo.set_donut_option(delivery_status_df.to_dict('records'),"Delivery Status")
+        
+        st_echarts(options=options, height="200px")
+    
+    with row1_col2:
+        order_status_df = DataFrame(df['order_stat'].value_counts())
+        order_status_df['name'] = order_status_df.index                          
+        order_status_df.sort_values(by=['name'], inplace=True)
+        
+        exclude = ['COMPLETE','CLOSED']
+        order_status_df = order_status_df[~order_status_df['name'].isin(exclude)]
+        order_status_df['name'] = ds.replace(order_status_df['name'],['Suspected Fraud','Processing','Pending Payment','Pending','Payment Review','On Hold','Canceled'])
+        
+        options = vo.set_bar_option(list(order_status_df['name']),list(order_status_df['order_stat']),"Order Status")
+        
+        st_echarts(options=options, height="200px")
+        
+    with row1_col3:
+        late_risk_df = DataFrame(df['late_risk'].value_counts())
+        late_risk_df['name'] = late_risk_df.index
+        late_risk_df['name'] = ds.replace(late_risk_df['name'],['Late','On Time'])
+        late_risk_df.rename(columns={'late_risk':'value'}, inplace=True)
+        
+        options = vo.set_donut_option(late_risk_df.to_dict('records'),"Late Delivery Risk")
+        
+        st_echarts(options=options, height="200px")
+
+with st.container():
+    row2_col1, row2_col2, row2_col3 = st.columns(3)        
     
     with row2_col1:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                SUM("Order Item Quantity") AS value,
-                "Order Date Part" AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA' AND
-                "Order Month" = 'Nov'
-            GROUP BY
-                "Order Month", "Order Date Part"
-            ORDER BY
-                "Order Date Part"   
-        """, headers=1)
+        item_qty_df = DataFrame(df.groupby('order_date_date')['order_item_qty'].sum())
+        item_qty_df['name'] = list(range(1,len(item_qty_df)+1))
         
-        df = DataFrame(result)
-        df['value'] = round(df['value'])
+        options = vo.set_line_option(list(item_qty_df['name']),list(item_qty_df['order_item_qty']),"Order Item Quantity Trend","#5470c6")
         
-        options = {
-          "xAxis": {
-            "type": "category",
-            "data": list(df['name'])
-          },
-          "yAxis": {
-            "type": "value"
-          },
-          "series": [
-            {
-              "data": list(df['value']),
-              "type": "line",
-              "smooth": True,
-              "label": { "position": "top" }
-            }
-          ]
-        }
+        st_echarts(options=options, height="250px")
         
-        st_echarts(
-            options=options, height="300px",
-        )
-    
     with row2_col2:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                SUM("Sales") AS value,
-                "Order Date Part" AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA' AND
-                "Order Month" = 'Nov'
-            GROUP BY
-                "Order Month", "Order Date Part"
-            ORDER BY
-                "Order Date Part"   
-        """, headers=1)
+        sales_df = DataFrame(df.groupby('order_date_date')['sales'].sum())
+        sales_df['name'] = list(range(1,len(item_qty_df)+1))
         
-        df = DataFrame(result)
-        df['value'] = round(df['value'])
+        options = vo.set_line_option(list(sales_df['name']),list(sales_df['sales']),"Sales Trend","#91cc75")
         
-        options = {
-          "xAxis": {
-            "type": "category",
-            "data": list(df['name'])
-          },
-          "yAxis": {
-            "type": "value"
-          },
-          "series": [
-            {
-              "data": list(df['value']),
-              "type": "line",
-              "smooth": True,
-              "label": { "position": "top" }
-            }
-          ]
-        }
+        st_echarts(options=options, height="250px")
         
-        st_echarts(
-            options=options, height="300px",
-        )
-    
     with row2_col3:
-        conn = connect()
-        result = conn.execute("""
-            SELECT
-                SUM("Order Profit Per Order") AS value,
-                "Order Date Part" AS name
-            FROM
-                "https://docs.google.com/spreadsheets/d/1C2sP7QrIrJAii_4NZWWjtiq1rYFkxua5tkvlNHJUS0c/"         
-            WHERE
-                "Customer State" = 'CA' AND
-                "Order Month" = 'Nov'
-            GROUP BY
-                "Order Month", "Order Date Part"
-            ORDER BY
-                "Order Date Part"   
-        """, headers=1)
+        profit_df = DataFrame(df.groupby('order_date_date')['profit_per_order'].sum())
+        profit_df['name'] = list(range(1,len(item_qty_df)+1))
         
-        df = DataFrame(result)
-        df['value'] = round(df['value'])
+        options = vo.set_line_option(list(profit_df['name']),list(profit_df['profit_per_order']),"Profit Trend","#73c0de")
         
-        options = {
-          "xAxis": {
-            "type": "category",
-            "data": list(df['name'])
-          },
-          "yAxis": {
-            "type": "value"
-          },
-          "series": [
-            {
-              "data": list(df['value']),
-              "type": "line",
-              "smooth": True,
-              "label": { "position": "top" }
-            }
-          ]
-        }
-        
-        st_echarts(
-            options=options, height="300px",
-        )                         
+        st_echarts(options=options, height="250px")
