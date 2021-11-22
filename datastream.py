@@ -1,7 +1,7 @@
 import sys
 import subprocess
 
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'gsheetsdb'])
+#subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'gsheetsdb'])
 
 import streamlit as st
 from gsheetsdb import connect
